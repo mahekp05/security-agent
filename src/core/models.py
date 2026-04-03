@@ -6,6 +6,9 @@ class DiffHunk(BaseModel):
     added_lines: List[str]
     removed_lines: List[str]
 
+class ParsedDiff(BaseModel):
+    hunks: List[DiffHunk] = Field(description="List of security-relevant code hunks extracted from the diff.")
+
 class VulnerabilityFinding(BaseModel):
     category: str = Field(description="A05, A02, or A10")
     description: str
