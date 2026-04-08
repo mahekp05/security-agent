@@ -1,5 +1,5 @@
-from src.core.llm import get_llm
-from src.core.models import DiffHunk, VulnerabilityFinding
+from core.llm import get_llm
+from core.models import DiffHunk, VulnerabilityFinding
 from langchain_core.prompts import PromptTemplate
 from typing import List
 from pydantic import BaseModel, Field
