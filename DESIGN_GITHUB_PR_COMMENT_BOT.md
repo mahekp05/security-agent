@@ -74,6 +74,13 @@ File: `src/main.py`
 4. Push a commit to the PR.
 5. Verify the workflow ran and a comment appears on the PR.
 
+## Troubleshooting: 403 Forbidden when posting comment
+If the job fails with `403 Forbidden` when calling the GitHub comments API, set:
+- Repo → Settings → Actions → General → **Workflow permissions** → **Read and write permissions**
+
+Also ensure:
+- Repo → Settings → General → Features → **Issues** is enabled (PR conversation comments use the issues comments API).
+
 ### Important: why you may see “Checks: 0”
 If the workflow file is only introduced/changed inside the PR, GitHub may not execute it for security reasons.
 To reliably test PR triggers, ensure `.github/workflows/security-review.yml` already exists on the default branch (`main`), then open/update a separate PR.

@@ -32,5 +32,7 @@ jobs:
       - name: Run security agent (posts PR comment)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Required once you switch from --test-comment to real analysis
+          HUGGINGFACEHUB_API_TOKEN: ${{ secrets.HUGGINGFACEHUB_API_TOKEN }}
         run: |
           python -m src.main --github-pr --test-comment
