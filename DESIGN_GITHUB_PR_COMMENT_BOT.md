@@ -54,6 +54,7 @@ File: `src/main.py`
 - `HUGGINGFACEHUB_API_TOKEN`
   - Add it in GitHub repo settings → Secrets and variables → Actions → New repository secret
   - Name must match exactly: `HUGGINGFACEHUB_API_TOKEN`
+  - Not required for `--test-comment` mode; required once you enable real analysis.
 
 ## Local testing
 ### 1) Offline diff test (no GitHub)
