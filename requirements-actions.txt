@@ -1,0 +1,7 @@
+# Minimal runtime dependencies for GitHub Actions
+requests>=2.31
+python-dotenv>=1.0
+pydantic>=2.0
+langchain-core>=0.2
+langchain-huggingface>=0.1
+huggingface_hub>=0.20
