@@ -43,4 +43,12 @@ def post_issue_comment(repo_full_name: str, pr_number: int, token: str, body_md:
     }
 
     response = requests.post(url, headers=headers, json={"body": body_md}, timeout=60)
+
+    if not response.ok:
+        # Provide actionable debugging info in GitHub Actions logs.
+        request_id = response.headers.get("x-github-request-id") or response.headers.get("X-GitHub-Request-Id")
+        print(
+            "GitHub API error posting PR comment: "
+            f"status={response.status_code} request_id={request_id} url={url} response={response.text}"
+        )
     response.raise_for_status()
