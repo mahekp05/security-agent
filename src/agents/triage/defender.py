@@ -7,8 +7,8 @@ Outputs confidence_score (1-100) on whether it's actually a real risk.
 import json
 import re
 from typing import List
-from core.models import VulnerabilityFinding, DiffHunk, DefenderVerdict, ProsecutorVerdict
-from core.llm import get_llm
+from src.core.models import VulnerabilityFinding, DiffHunk, DefenderVerdict, ProsecutorVerdict
+from src.core.llm import get_llm
 
 
 class DefenderAgent:

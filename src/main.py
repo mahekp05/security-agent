@@ -1,14 +1,14 @@
 # src/main.py
 import sys
 from collections import defaultdict
-from core.models import VulnerabilityFinding, DiffHunk, ProsecutorVerdict, DefenderVerdict, CategoryTriageVerdict
-from agents.triage.prosecutor import create_prosecutor
-from agents.triage.defender import create_defender
-from agents.triage.judge import create_judge
-from agents.detectors.injection_detector import detect_injection
-from agents.detectors.configuration_detector import detect_configuration
-from agents.detectors.errorHandling_detector import detect_error_handling
-from agents.diff_parser import parse_git_diff
+from src.core.models import VulnerabilityFinding, DiffHunk, ProsecutorVerdict, DefenderVerdict, CategoryTriageVerdict, SecurityReport
+from src.agents.triage.prosecutor import create_prosecutor
+from src.agents.triage.defender import create_defender
+from src.agents.triage.judge import create_judge
+from src.agents.detectors.injection_detector import detect_injection
+from src.agents.detectors.configuration_detector import detect_configuration
+from src.agents.detectors.errorHandling_detector import detect_error_handling
+from src.agents.diff_parser import parse_git_diff
 
 
 def run_full_pipeline(raw_diff: str):
@@ -26,7 +26,7 @@ def run_full_pipeline(raw_diff: str):
             print(f"  - {hunk.file_path}")
     except Exception as e:
         print(f"✗ Diff parsing failed: {str(e)[:100]}")
-        return False
+        return None
     
     # 2. Run detectors
     print("\n2. Running detectors (A05, A02, A10)...")
@@ -40,7 +40,7 @@ def run_full_pipeline(raw_diff: str):
         print(f"✓ A10 (Error Handling): {len(a10_findings)} findings")
     except Exception as e:
         print(f"✗ Detector failed: {str(e)[:100]}")
-        return False
+        return None
     
     # 3. Group findings by category
     print("\n3. Grouping findings by category...")
@@ -116,7 +116,15 @@ def run_full_pipeline(raw_diff: str):
         print(f"  Judge Reasoning: {verdict.judge.reasoning[:150]}...")
     
     print("\n" + "="*80)
-    return True
+    
+    # Create and return the final report
+    all_findings = a05_findings + a02_findings + a10_findings
+    report = SecurityReport(
+        verdicts=verdicts,
+        total_findings=len(all_findings),
+        summary=f"Found {len(verdicts)} vulnerability categories with {len(all_findings)} total findings"
+    )
+    return report
 
 
 def mock_get_git_diff(repo_path: str) -> str:
