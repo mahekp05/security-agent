@@ -8,7 +8,8 @@ import json
 import re
 from typing import List
 from src.core.models import VulnerabilityFinding, DiffHunk, ProsecutorVerdict, DefenderVerdict, JudgeVerdict
-from src.core.llm import get_llm
+from src.core.llm import get_triage_llm
+
 
 
 class JudgeAgent:
@@ -26,7 +27,7 @@ class JudgeAgent:
 
     def __init__(self, temperature: float = 0.0):
         """Initialize with zero temperature for deterministic decisions"""
-        self.llm = get_llm(temperature=temperature)
+        self.llm = get_triage_llm(temperature=temperature)
 
     def _calculate_confidence_gap(self, prosecutor_score: int, defender_score: int) -> dict:
         """
@@ -223,8 +224,14 @@ Respond with ONLY the JSON object, no additional text."""
                 risk_label = label
                 break
         
+        # Try to extract confidence_score from text
+        score_match = re.search(r'confidence[_\s]*score[:\s]*(\d+)', response_text, re.IGNORECASE)
+        confidence_score = int(score_match.group(1)) if score_match else 50
+        confidence_score = max(1, min(100, confidence_score))
+        
         return {
             "risk_label": risk_label,
+            "confidence_score": confidence_score,
             "reasoning": response_text[:300] if len(response_text) > 0 else "Unable to parse detailed reasoning."
         }
 
@@ -300,13 +307,21 @@ Respond with ONLY the JSON object, no additional text."""
         if risk_label not in valid_labels:
             risk_label = "medium_risk"
         
+        # Extract or calculate confidence_score
+        confidence_score = parsed.get("confidence_score", 50)
+        if isinstance(confidence_score, str):
+            confidence_score = int(confidence_score)
+        confidence_score = max(1, min(100, confidence_score))
+        
         reasoning = parsed.get("reasoning", "")
         word_count = len(reasoning.split())
         if word_count < 50:
             reasoning += f"\n\n[Extended reasoning: current response ({word_count} words), need 200-300 words]"
         
         return JudgeVerdict(
+            category=category,
             risk_label=risk_label,
+            confidence_score=confidence_score,
             reasoning=reasoning
         )
 

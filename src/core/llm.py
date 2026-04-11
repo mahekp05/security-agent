@@ -22,3 +22,11 @@ def get_llm(temperature: float = 0.2):
         temperature=temperature,
     )
     return ChatHuggingFace(llm=llm)
+
+def get_triage_llm(temperature: float = 0.0):
+    """Reasoning-optimized LLM for Judge only (32B = better logic, Nscale-compatible)"""
+    llm = HuggingFaceEndpoint(
+        model="Qwen/Qwen2.5-Coder-32B-Instruct",
+        temperature=temperature,
+    )
+    return ChatHuggingFace(llm=llm)

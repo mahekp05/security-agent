@@ -284,11 +284,13 @@ Respond with ONLY the JSON object, no additional text."""
         if word_count < 50:
             reasoning += f"\n\n[Extended analysis: current response ({word_count} words), need 150-400 words]"
         
+        agrees = abs(confidence_score - prosecutor_verdict.confidence_score) <= 25
+
         return DefenderVerdict(
             confidence_score=confidence_score,
-            reasoning=reasoning
+            reasoning=reasoning,           # ← the text reasoning (150-400 words)
+            agrees_with_prosecutor=agrees   # ← the boolean (True/False)
         )
-
 
 def create_defender() -> DefenderAgent:
     """Factory function to create a DefenderAgent with default settings"""

@@ -50,10 +50,19 @@ def run_full_pipeline(raw_diff: str):
         findings_by_category[finding.category]["findings"].append(finding)
     
     # Track which hunks are relevant for each category
+    # Only include hunks that contain findings for that category
     for category in findings_by_category:
-        for hunk in hunks:
-            if hunk not in findings_by_category[category]["hunks"]:
-                findings_by_category[category]["hunks"].append(hunk)
+        relevant_hunks = []
+        for finding in findings_by_category[category]["findings"]:
+            # For each finding, find which hunks contain the affected code
+            for hunk in hunks:
+                # Check if the affected code appears as substring in any line
+                has_code = any(finding.affected_code in line for line in hunk.added_lines) or any(finding.affected_code in line for line in hunk.removed_lines)
+                if has_code:
+                    # Avoid duplicates by checking if hunk is already in list
+                    if hunk not in relevant_hunks:
+                        relevant_hunks.append(hunk)
+        findings_by_category[category]["hunks"] = relevant_hunks
     
     # 4. Run triage for each category
     print("\n4. Running triage agents (Prosecutor → Defender → Judge)...")

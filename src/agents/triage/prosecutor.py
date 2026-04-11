@@ -211,6 +211,7 @@ Respond with ONLY the JSON object, no additional text."""
             reasoning += f"\n\n[Extended analysis: current response ({word_count} words), need 150-400 words]"
         
         return ProsecutorVerdict(
+            category=category,
             confidence_score=confidence_score,
             reasoning=reasoning
         )
