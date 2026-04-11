@@ -157,6 +157,13 @@ pytest tests/test_diff_parser.py -v
 # Run one specific test
 pytest tests/test_diff_parser.py::test_parser_extracts_hunks_from_raw_diff -v
 
+
+# Unit tests (no API calls, use mocks) - Fast
+pytest tests/test_detectors.py tests/test_diff_parser.py -v
+
+# Integration tests (call real API) - Slow, needs credits
+pytest tests/test_integration.py -v
+
 # Run with coverage report
 pytest --cov=src tests/
 
