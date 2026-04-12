@@ -12,6 +12,7 @@ Run this repo’s security agent automatically on every PR update and post a **M
    - Reads PR number from `GITHUB_EVENT_PATH` (JSON payload)
    - Fetches the PR diff from GitHub API using `GITHUB_TOKEN`
    - Runs the pipeline: diff parser → detectors (A05/A02/A10)
+  - Optionally includes Judge triage output when `--include-triage` is enabled
    - Formats a Markdown report string
    - Posts the report as an issue comment via GitHub API
 
@@ -43,6 +44,8 @@ File: `src/main.py`
 - `--github-pr` mode for GitHub Actions
 - `--diff-file` mode for offline/local testing
 - `--repo` + `--pr-number` mode for local testing against GitHub (requires `GITHUB_TOKEN`)
+- `--include-triage` to include Judge triage verdicts in the Markdown output (optional)
+- `--test-comment` to post a basic wiring-test comment and skip analysis
 
 ## Required secrets/env vars
 ### GitHub Actions provides automatically

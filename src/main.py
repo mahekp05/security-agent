@@ -178,10 +178,39 @@ def _format_report(findings: List[VulnerabilityFinding]) -> str:
     return "\n".join(lines)
 
 
-def run_on_diff(raw_diff: str) -> str:
-    # Analyze using the full backend pipeline (includes triage), but keep PR comment findings-only.
-    _, findings, _ = _analyze_diff(raw_diff)
-    return _format_report(findings)
+def _format_triage_section(verdicts: List[CategoryTriageVerdict]) -> str:
+    lines: List[str] = [
+        "## Triage (Judge)",
+        "",
+    ]
+
+    if not verdicts:
+        lines.append("No triage verdicts (no findings detected).")
+        return "\n".join(lines)
+
+    for v in verdicts:
+        judge = v.judge
+        finding_count = len(v.findings) if getattr(v, "findings", None) else 0
+        lines.append(
+            f"### {v.category}: **{judge.risk_label}** (confidence {judge.confidence_score}/100, findings {finding_count})"
+        )
+        lines.append("<details>")
+        lines.append("<summary>Reasoning</summary>")
+        lines.append("")
+        lines.append((judge.reasoning or "").strip() or "(no reasoning provided)")
+        lines.append("</details>")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def run_on_diff(raw_diff: str, include_triage: bool = False) -> str:
+    # Analyze using the full backend pipeline (includes triage).
+    _, findings, verdicts = _analyze_diff(raw_diff)
+    report_md = _format_report(findings)
+    if include_triage:
+        report_md = report_md + "\n\n---\n\n" + _format_triage_section(verdicts)
+    return report_md
 
 
 def main() -> int:
@@ -195,13 +224,18 @@ def main() -> int:
     parser.add_argument("--repo", help="owner/repo (for local debugging without GitHub Actions)")
     parser.add_argument("--pr-number", type=int, help="PR number (for local debugging without GitHub Actions)")
     parser.add_argument("--diff-file", help="Path to a local diff file (offline run)")
+    parser.add_argument(
+        "--include-triage",
+        action="store_true",
+        help="Include Judge triage verdicts in the generated report/comment",
+    )
     args = parser.parse_args()
 
     # Offline mode: useful for local testing without GitHub
     if args.diff_file:
         with open(args.diff_file, "r", encoding="utf-8") as f:
             raw_diff = f.read()
-        print(run_on_diff(raw_diff))
+        print(run_on_diff(raw_diff, include_triage=args.include_triage))
         return 0
 
     # Local GitHub mode (manual): fetch diff and print report
@@ -221,7 +255,7 @@ def main() -> int:
             return 0
 
         raw_diff = get_pr_diff(args.repo, args.pr_number, token)
-        print(run_on_diff(raw_diff))
+        print(run_on_diff(raw_diff, include_triage=args.include_triage))
         return 0
 
     # GitHub Actions mode: fetch diff and post comment
@@ -249,7 +283,7 @@ def main() -> int:
 
         try:
             raw_diff = get_pr_diff(repo, pr_number, token)
-            report_md = run_on_diff(raw_diff)
+            report_md = run_on_diff(raw_diff, include_triage=args.include_triage)
         except Exception as e:
             # Best-effort: still post a comment so the developer sees the failure.
             report_md = _format_report([]) + f"\n\n---\n\n**Agent error:** {type(e).__name__}: {e}"
