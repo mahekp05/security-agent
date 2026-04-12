@@ -1,0 +1,125 @@
+>> curity-agent) PS C:\Users\mahek\Desktop\USF\semesters\2026 Spring\agentic_ai\final_project\security-agent>
+=========================================================================== test session starts ============================================================================
+platform win32 -- Python 3.10.20, pytest-9.0.3, pluggy-1.6.0 -- C:\Users\mahek\.conda\envs\security-agent\python.exe
+cachedir: .pytest_cache
+metadata: {'Python': '3.10.20', 'Platform': 'Windows-10-10.0.26200-SP0', 'Packages': {'pytest': '9.0.3', 'pluggy': '1.6.0'}, 'Plugins': {'anyio': '4.13.0', 'langsmith': '0.7.24', 'html': '4.2.0', 'metadata': '3.1.1'}, 'JAVA_HOME': 'C:\\Users\\mahek\\OneDrive\\Desktop\\CS\\CS'}
+rootdir: C:\Users\mahek\Desktop\USF\semesters\2026 Spring\agentic_ai\final_project\security-agent
+configfile: pytest.ini
+plugins: anyio-4.13.0, langsmith-0.7.24, html-4.2.0, metadata-3.1.1
+collected 17 items                                                                                                                                                          
+
+tests/test_detectors.py::TestA05InjectionDetector::test_injection_detector_finds_obvious_sql_injection PASSED                                                         [  5%]
+tests/test_detectors.py::TestA05InjectionDetector::test_injection_detector_skips_safe_parameterized_query PASSED                                                      [ 11%]
+tests/test_detectors.py::TestA05InjectionDetector::test_injection_detector_references_specific_code PASSED                                                            [ 17%]
+tests/test_detectors.py::TestA05InjectionDetector::test_injection_detector_handles_empty_hunks PASSED                                                                 [ 23%]
+tests/test_detectors.py::TestA02ConfigurationDetector::test_config_detector_finds_exposed_api_key PASSED                                                              [ 29%]
+tests/test_detectors.py::TestA02ConfigurationDetector::test_config_detector_skips_safe_config FAILED                                                                  [ 35%]
+tests/test_detectors.py::TestA02ConfigurationDetector::test_config_detector_references_specific_config PASSED                                                         [ 41%]
+tests/test_detectors.py::TestA02ConfigurationDetector::test_config_detector_handles_empty_hunks PASSED                                                                [ 47%]
+tests/test_detectors.py::TestA10ErrorHandlingDetector::test_error_detector_finds_uncaught_exception PASSED                                                            [ 52%]
+tests/test_detectors.py::TestA10ErrorHandlingDetector::test_error_detector_skips_safe_error_handling FAILED                                                           [ 58%]
+tests/test_detectors.py::TestA10ErrorHandlingDetector::test_error_detector_references_specific_error_pattern PASSED                                                   [ 64%]
+tests/test_detectors.py::TestA10ErrorHandlingDetector::test_error_detector_handles_empty_hunks PASSED                                                                 [ 70%]
+tests/test_diff_parser.py::TestDiffParser::test_parser_extracts_hunks_from_raw_diff PASSED                                                                            [ 76%]
+tests/test_diff_parser.py::TestDiffParser::test_parser_preserves_file_path FAILED                                                                                     [ 82%]
+tests/test_diff_parser.py::TestDiffParser::test_parser_filters_irrelevant_changes PASSED                                                                              [ 88%]
+tests/test_diff_parser.py::TestDiffParser::test_parser_handles_added_and_removed_lines PASSED                                                                         [ 94%]
+tests/test_diff_parser.py::TestDiffParser::test_parser_handles_mixed_category_diff PASSED                                                                             [100%]
+
+================================================================================= FAILURES ================================================================================= 
+___________________________________________________ TestA02ConfigurationDetector.test_config_detector_skips_safe_config ____________________________________________________ 
+tests\test_detectors.py:105: in test_config_detector_skips_safe_config
+    assert all(f.confidence == "Low" for f in findings), "Safe config should only produce Low confidence"
+E   AssertionError: Safe config should only produce Low confidence
+E   assert False
+E    +  where False = all(<generator object TestA02ConfigurationDetector.test_config_detector_skips_safe_config.<locals>.<genexpr> at 0x00000218C72B7920>)
+--------------------------------------------------------------------------- Captured stdout call --------------------------------------------------------------------------- 
+Agent: Running A02 (Configuration) detector...
+________________________________________________ TestA10ErrorHandlingDetector.test_error_detector_skips_safe_error_handling ________________________________________________ 
+tests\test_detectors.py:167: in test_error_detector_skips_safe_error_handling
+    assert all(f.confidence == "Low" for f in findings), "Safe error handling should only produce Low confidence"
+E   AssertionError: Safe error handling should only produce Low confidence
+E   assert False
+E    +  where False = all(<generator object TestA10ErrorHandlingDetector.test_error_detector_skips_safe_error_handling.<locals>.<genexpr> at 0x00000218C72B76F0>)
+--------------------------------------------------------------------------- Captured stdout call --------------------------------------------------------------------------- 
+Agent: Running A10 (Error Handling) detector...
+______________________________________________________________ TestDiffParser.test_parser_preserves_file_path ______________________________________________________________ 
+tests\test_diff_parser.py:40: in test_parser_preserves_file_path
+    assert len(hunks) == 3, f"Expected 3 hunks, got {len(hunks)}"
+E   AssertionError: Expected 3 hunks, got 2
+E   assert 2 == 3
+E    +  where 2 = len([DiffHunk(file_path='utils/db.py', added_lines=['+def unsafe_query(sql):'], removed_lines=['-def query(sql):']), DiffHunk(file_path='config/settings.py', added_lines=['+DEBUG = True'], removed_lines=['-DEBUG = False'])])
+--------------------------------------------------------------------------- Captured stdout call --------------------------------------------------------------------------- 
+Agent: Parsing diff...
+---------------------- generated xml file: C:\Users\mahek\Desktop\USF\semesters\2026 Spring\agentic_ai\final_project\security-agent\test_results.xml ----------------------- 
+========================================================================= short test summary info ========================================================================== 
+FAILED tests/test_detectors.py::TestA02ConfigurationDetector::test_config_detector_skips_safe_config - AssertionError: Safe config should only produce Low confidence        
+assert False
+ +  where False = all(<generator object TestA02ConfigurationDetector.test_config_detector_skips_safe_config.<locals>.<genexpr> at 0x00000218C72B7920>)
+FAILED tests/test_detectors.py::TestA10ErrorHandlingDetector::test_error_detector_skips_safe_error_handling - AssertionError: Safe error handling should only produce Low confidence
+assert False
+ +  where False = all(<generator object TestA10ErrorHandlingDetector.test_error_detector_skips_safe_error_handling.<locals>.<genexpr> at 0x00000218C72B76F0>)
+FAILED tests/test_diff_parser.py::TestDiffParser::test_parser_preserves_file_path - AssertionError: Expected 3 hunks, got 2
+assert 2 == 3
+ +  where 2 = len([DiffHunk(file_path='utils/db.py', added_lines=['+def unsafe_query(sql):'], removed_lines=['-def query(sql):']), DiffHunk(file_path='config/settings.py', added_lines=['+DEBUG = True'], removed_lines=['-DEBUG = False'])])
+====================================================================== 3 failed, 14 passed in 38.52s ======================================================================= 
+
+
+Notes:
+## Why These 3 Tests Failed:
+
+### **1. FALSE POSITIVE: Configuration Detector** ❌
+```
+Expected: Safe config → Low confidence
+Actual: Safe config → High/Medium confidence
+```
+The configuration_detector.py is **incorrectly flagging safe configuration as HIGH risk**.
+
+**Test input:** `config/settings.py` with `API_KEY = os.getenv("API_KEY")` (safe, uses env vars)
+
+**What happened:** The detector returned findings, but categorized them as HIGH/MEDIUM confidence when they should be LOW.
+
+**Root cause:** Your detector's logic is too aggressive. It's probably flagging ANY configuration change without checking if it's actually safe.
+
+---
+
+### **2. FALSE POSITIVE: Error Handling Detector** ❌
+```
+Expected: Safe error handling → Low confidence
+Actual: Safe error handling → High/Medium confidence
+```
+Same problem as #1, but for errorHandling_detector.py.
+
+**Test input:** Code with proper `try/except/logging` (safe error handling)
+
+**What happened:** Detector flagged it as HIGH risk when it should be LOW.
+
+**Root cause:** Same issue - detector logic needs to distinguish between safe and unsafe patterns.
+
+---
+
+### **3. MISSING DATA: Diff Parser** ❌
+```
+Expected: 3 files extracted from multi-file diff
+Actual: 2 files extracted (missing 1)
+```
+The `parse_git_diff()` function missed one file.
+
+**Test input:** `MULTI_FILE_DIFF` with changes to:
+1. `utils/db.py` ✓ found
+2. `config/settings.py` ✓ found  
+3. `server/api.py` ❌ **MISSING**
+
+**Root cause:** Your LLM-based parser isn't extracting all hunks from complex multi-file diffs. It's probably stopping early or missing the third file section.
+
+---
+
+## Quick Fix Strategy:
+
+| Test | Issue | Fix |
+|------|-------|-----|
+| A02 Config | Over-alerting safe code | Add logic to detect `os.getenv()` as SAFE pattern |
+| A10 Error | Over-alerting safe code | Add logic to detect `try/except/log` as SAFE pattern |
+| Diff Parser | Incomplete extraction | Improve LLM prompt to extract ALL file sections |
+
+Want me to help debug any of these specific files?
