@@ -1,195 +1,127 @@
-# src/main.py
-import sys
-from collections import defaultdict
-from src.core.models import VulnerabilityFinding, DiffHunk, ProsecutorVerdict, DefenderVerdict, CategoryTriageVerdict, SecurityReport
-from src.agents.triage.prosecutor import create_prosecutor
-from src.agents.triage.defender import create_defender
-from src.agents.triage.judge import create_judge
-from src.agents.detectors.injection_detector import detect_injection
-from src.agents.detectors.configuration_detector import detect_configuration
-from src.agents.detectors.errorHandling_detector import detect_error_handling
-from src.agents.diff_parser import parse_git_diff
+"""Security agent runner.
 
-
-def run_full_pipeline(raw_diff: str):
-    """Run complete pipeline: parse diff → detectors → triage agents"""
-    print("="*80)
-    print("RUNNING FULL SECURITY AGENT PIPELINE")
-    print("="*80)
-    
-    # 1. Parse diff
-    print("\n1. Parsing git diff...")
-    try:
-        hunks = parse_git_diff(raw_diff)
-        print(f"✓ Extracted {len(hunks)} code hunks")
-        for hunk in hunks:
-            print(f"  - {hunk.file_path}")
-    except Exception as e:
-        print(f"✗ Diff parsing failed: {str(e)[:100]}")
-        return None
-    
-    # 2. Run detectors
-    print("\n2. Running detectors (A05, A02, A10)...")
-    try:
-        a05_findings = detect_injection(hunks)
-        a02_findings = detect_configuration(hunks)
-        a10_findings = detect_error_handling(hunks)
-        
-        print(f"✓ A05 (Injection): {len(a05_findings)} findings")
-        print(f"✓ A02 (Configuration): {len(a02_findings)} findings")
-        print(f"✓ A10 (Error Handling): {len(a10_findings)} findings")
-    except Exception as e:
-        print(f"✗ Detector failed: {str(e)[:100]}")
-        return None
-    
-    # 3. Group findings by category
-    print("\n3. Grouping findings by category...")
-    findings_by_category = defaultdict(lambda: {"findings": [], "hunks": []})
-    
-    for finding in a05_findings + a02_findings + a10_findings:
-        findings_by_category[finding.category]["findings"].append(finding)
-    
-    # Track which hunks are relevant for each category
-    # Only include hunks that contain findings for that category
-    for category in findings_by_category:
-        relevant_hunks = []
-        for finding in findings_by_category[category]["findings"]:
-            # For each finding, find which hunks contain the affected code
-            for hunk in hunks:
-                # Check if the affected code appears as substring in any line
-                has_code = any(finding.affected_code in line for line in hunk.added_lines) or any(finding.affected_code in line for line in hunk.removed_lines)
-                if has_code:
-                    # Avoid duplicates by checking if hunk is already in list
-                    if hunk not in relevant_hunks:
-                        relevant_hunks.append(hunk)
-        findings_by_category[category]["hunks"] = relevant_hunks
-    
-    # 4. Run triage for each category
-    print("\n4. Running triage agents (Prosecutor → Defender → Judge)...")
-    verdicts = []
-    
-    prosecutor = create_prosecutor()
-    defender = create_defender()
-    judge = create_judge()
-    
-    for category in sorted(findings_by_category.keys()):
-        findings = findings_by_category[category]["findings"]
-        hunks_list = list(findings_by_category[category]["hunks"])
-        
-        if not findings:
-            continue
-        
-        print(f"\n   Category: {category} ({len(findings)} findings)")
-        
-        try:
-            # Prosecutor
-            print(f"   → Prosecutor...", end=" ", flush=True)
-            prosecutor_verdict = prosecutor.prosecute(category, findings, hunks_list)
-            print(f"✓ ({prosecutor_verdict.confidence_score}/100)")
-            
-            # Defender
-            print(f"   → Defender...", end=" ", flush=True)
-            defender_verdict = defender.defend(category, findings, hunks_list, prosecutor_verdict)
-            print(f"✓ ({defender_verdict.confidence_score}/100)")
-            
-            # Judge
-            print(f"   → Judge...", end=" ", flush=True)
-            judge_verdict = judge.judge(category, findings, hunks_list, prosecutor_verdict, defender_verdict)
-            print(f"✓ ({judge_verdict.risk_label})")
-            
-            # Store verdict
-            verdict = CategoryTriageVerdict(
-                category=category,
-                findings=findings,
-                diff_hunks=hunks_list,
-                prosecutor=prosecutor_verdict,
-                defender=defender_verdict,
-                judge=judge_verdict
-            )
-            verdicts.append(verdict)
-            
-        except Exception as e:
-            print(f"✗ Triage failed: {str(e)[:80]}")
-            continue
-    
-    # 5. Print summary
-    print("\n" + "="*80)
-    print("SECURITY ASSESSMENT REPORT")
-    print("="*80)
-    for verdict in sorted(verdicts, key=lambda v: ["critical_risk", "medium_risk", "low_risk", "false_positive"].index(v.judge.risk_label)):
-        print(f"\nCategory: {verdict.category}")
-        print(f"  Findings: {len(verdict.findings)}")
-        print(f"  Prosecutor: {verdict.prosecutor.confidence_score}/100")
-        print(f"  Defender: {verdict.defender.confidence_score}/100")
-        print(f"  Risk Label: {verdict.judge.risk_label}")
-        print(f"  Judge Reasoning: {verdict.judge.reasoning[:150]}...")
-    
-    print("\n" + "="*80)
-    
-    # Create and return the final report
-    all_findings = a05_findings + a02_findings + a10_findings
-    report = SecurityReport(
-        verdicts=verdicts,
-        total_findings=len(all_findings),
-        summary=f"Found {len(verdicts)} vulnerability categories with {len(all_findings)} total findings"
-    )
-    return report
-
-
-def mock_get_git_diff(repo_path: str) -> str:
-    # Later: implemented with GitPython or subprocess
-    return "diff --git a/test.py b/test.py\n+ eval(user_input)"
-
-
-def main():
-    # Mock git diff with actual security vulnerabilities
-    raw_diff = """diff --git a/app.py b/app.py
-index 1234567..abcdefg 100644
---- a/app.py
-+++ b/app.py
-@@ -15,8 +15,10 @@ from flask import Flask, request
- 
- def get_user(user_id):
--    query = "SELECT * FROM users WHERE id = %s"
--    return db.execute(query, (user_id,))
-+    # SQL Injection vulnerability - f-string in query
-+    query = f"SELECT * FROM users WHERE id={user_id}"
-+    return db.execute(query)
- 
- def login(username, password):
--    ldap_filter = "(uid={})"
-+    # Command injection - unsanitized shell command
-+    os.system(f"ldap search -u {username} -p {password}")
- 
-@@ -25,7 +27,8 @@ def download_file(filename):
- 
- def error_page(error_code):
--    return render_template('error.html', code=error_code)
-+    # Error handling with stack trace exposure
-+    return traceback.format_exc()
- 
- def api_config():
--    return {"version": "1.0"}
-+    return {"version": "1.0", "api_key": "sk-1234567890"}
+This module is the backend entrypoint responsible for retrieving and processing PR diffs.
+In GitHub PR mode it fetches the actual PR diff via the GitHub API, parses it, runs
+detectors and triage agents, then posts a Markdown report as an issue comment.
 """
-    
-    # Run complete pipeline
-    run_full_pipeline(raw_diff)
-
-from __future__ import annotations
 
 import argparse
 import json
 import os
+from collections import defaultdict
 from datetime import datetime, timezone
-from typing import List
+from typing import Dict, Iterable, List, Tuple
 
 from src.agents.diff_parser import parse_git_diff
 from src.agents.detectors.configuration_detector import detect_configuration
 from src.agents.detectors.errorHandling_detector import detect_error_handling
 from src.agents.detectors.injection_detector import detect_injection
-from src.core.models import VulnerabilityFinding
+from src.agents.triage.defender import create_defender
+from src.agents.triage.judge import create_judge
+from src.agents.triage.prosecutor import create_prosecutor
+from src.core.models import CategoryTriageVerdict, DiffHunk, SecurityReport, VulnerabilityFinding
 from src.github.client import get_pr_diff, post_issue_comment
+
+
+def _normalize_diff_text(text: str) -> str:
+    """Normalize code-ish text to make hunk matching more resilient."""
+    if not text:
+        return ""
+    s = text.strip()
+    if s[:1] in {"+", "-"}:
+        s = s[1:]
+    return s.strip()
+
+
+def _iter_normalized_hunk_lines(hunk: DiffHunk) -> Iterable[str]:
+    for line in hunk.added_lines:
+        yield _normalize_diff_text(line)
+    for line in hunk.removed_lines:
+        yield _normalize_diff_text(line)
+
+
+def _select_relevant_hunks(hunks: List[DiffHunk], findings: List[VulnerabilityFinding]) -> List[DiffHunk]:
+    needles = [
+        _normalize_diff_text(f.affected_code)
+        for f in findings
+        if getattr(f, "affected_code", None)
+    ]
+    needles = [n for n in needles if n]
+    if not needles:
+        return []
+
+    relevant: List[DiffHunk] = []
+    for hunk in hunks:
+        haystack = list(_iter_normalized_hunk_lines(hunk))
+        if any(
+            any(needle in line or line in needle for line in haystack if line)
+            for needle in needles
+        ):
+            relevant.append(hunk)
+    return relevant
+
+
+def _analyze_diff(raw_diff: str) -> Tuple[List[DiffHunk], List[VulnerabilityFinding], List[CategoryTriageVerdict]]:
+    """Parse diff, run detectors, then run triage per category.
+
+    Returns:
+        (hunks, findings, verdicts)
+    """
+    hunks = parse_git_diff(raw_diff)
+
+    findings: List[VulnerabilityFinding] = []
+    findings.extend(detect_injection(hunks))
+    findings.extend(detect_configuration(hunks))
+    findings.extend(detect_error_handling(hunks))
+
+    findings_by_category: Dict[str, List[VulnerabilityFinding]] = defaultdict(list)
+    for finding in findings:
+        findings_by_category[finding.category].append(finding)
+
+    prosecutor = create_prosecutor()
+    defender = create_defender()
+    judge = create_judge()
+
+    verdicts: List[CategoryTriageVerdict] = []
+    for category in sorted(findings_by_category.keys()):
+        category_findings = findings_by_category[category]
+        if not category_findings:
+            continue
+
+        relevant_hunks = _select_relevant_hunks(hunks, category_findings)
+        if not relevant_hunks:
+            # Fallback: do not fail triage if detector output doesn't exactly match diff lines.
+            relevant_hunks = hunks
+
+        prosecutor_verdict = prosecutor.prosecute(category, category_findings, relevant_hunks)
+        defender_verdict = defender.defend(category, category_findings, relevant_hunks, prosecutor_verdict)
+        judge_verdict = judge.judge(category, category_findings, relevant_hunks, prosecutor_verdict, defender_verdict)
+
+        verdicts.append(
+            CategoryTriageVerdict(
+                category=category,
+                findings=category_findings,
+                diff_hunks=relevant_hunks,
+                prosecutor=prosecutor_verdict,
+                defender=defender_verdict,
+                judge=judge_verdict,
+            )
+        )
+
+    risk_order = {"critical_risk": 4, "medium_risk": 3, "low_risk": 2, "false_positive": 1}
+    verdicts.sort(key=lambda v: risk_order.get(v.risk_label, 0), reverse=True)
+
+    return hunks, findings, verdicts
+
+
+def run_full_pipeline(raw_diff: str) -> SecurityReport:
+    """Run complete pipeline: parse diff → detectors → triage agents."""
+    _, findings, verdicts = _analyze_diff(raw_diff)
+    return SecurityReport(
+        verdicts=verdicts,
+        total_findings=len(findings),
+        summary=f"Found {len(verdicts)} vulnerability categories with {len(findings)} total findings",
+    )
 
 
 def _read_github_pr_number_from_event(event_path: str) -> int:
@@ -247,13 +179,8 @@ def _format_report(findings: List[VulnerabilityFinding]) -> str:
 
 
 def run_on_diff(raw_diff: str) -> str:
-    hunks = parse_git_diff(raw_diff)
-
-    findings: List[VulnerabilityFinding] = []
-    findings.extend(detect_injection(hunks))
-    findings.extend(detect_configuration(hunks))
-    findings.extend(detect_error_handling(hunks))
-
+    # Analyze using the full backend pipeline (includes triage), but keep PR comment findings-only.
+    _, findings, _ = _analyze_diff(raw_diff)
     return _format_report(findings)
 
 
