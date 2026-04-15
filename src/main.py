@@ -148,6 +148,13 @@ def _format_report(findings: List[VulnerabilityFinding]) -> str:
         ]
         return "\n".join(lines)
 
+    # Category type descriptions
+    category_types = {
+        "A05": "Injection",
+        "A02": "Sensitive File Exposure",
+        "A10": "Mishandling of Exceptional Conditions",
+    }
+
     # Group by category for readability
     categories = {"A05": [], "A02": [], "A10": []}
     for finding in findings:
@@ -161,7 +168,10 @@ def _format_report(findings: List[VulnerabilityFinding]) -> str:
         cat_findings = categories.get(cat, [])
         if not cat_findings:
             continue
-        lines.append(f"### {cat} ({len(cat_findings)})")
+        cat_type = category_types.get(cat, "")
+        lines.append(f"### {cat}: {cat_type}")
+        lines.append(f"**Findings: {len(cat_findings)}**")
+        lines.append("")
         for f in cat_findings[:20]:
             code = (f.affected_code or "").strip()
             if len(code) > 220:
@@ -192,7 +202,7 @@ def _format_triage_section(verdicts: List[CategoryTriageVerdict]) -> str:
         judge = v.judge
         finding_count = len(v.findings) if getattr(v, "findings", None) else 0
         lines.append(
-            f"### {v.category}: **{judge.risk_label}** (confidence {judge.confidence_score}/100, findings {finding_count})"
+            f"### {v.category}: **{judge.risk_label}** (findings {finding_count})"
         )
         lines.append("<details>")
         lines.append("<summary>Reasoning</summary>")

@@ -52,8 +52,8 @@ def test_format_triage_section_includes_judge_fields() -> None:
     assert "A05" in md
     assert "critical_risk" in md
 
-    # Ensure we use the Judge confidence score (not the prosecutor shortcut).
-    assert "confidence 88/100" in md
+    # Ensure we include findings count in the header.
+    assert "findings 1" in md
     assert "Judge says this is exploitable" in md
     assert "<details>" in md
     assert "</details>" in md
