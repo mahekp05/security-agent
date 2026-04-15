@@ -35,4 +35,4 @@ jobs:
           # Required once you switch from --test-comment to real analysis
           HUGGINGFACEHUB_API_TOKEN: ${{ secrets.HUGGINGFACEHUB_API_TOKEN }}
         run: |
-          python -m src.main --github-pr --include-triage
+          python -m src.main --github-pr
