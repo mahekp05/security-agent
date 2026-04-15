@@ -7,8 +7,8 @@ Outputs risk_label (critical_risk | medium_risk | low_risk | false_positive) + r
 import json
 import re
 from typing import List
-from core.models import VulnerabilityFinding, DiffHunk, ProsecutorVerdict, DefenderVerdict, JudgeVerdict
-from core.llm import get_triage_llm
+from src.core.models import VulnerabilityFinding, DiffHunk, ProsecutorVerdict, DefenderVerdict, JudgeVerdict
+from src.core.llm import get_triage_llm
 
 
 
