@@ -6,7 +6,9 @@ Fixtures are test data, mocks, and utility functions used across tests.
 """
 
 import sys
+import os
 from pathlib import Path
+from unittest.mock import patch
 
 # Add project root to sys.path so pytest can find the src module
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -19,6 +21,34 @@ from src.core.models import (
     DefenderVerdict,
     JudgeVerdict,
 )
+
+
+# ============================================================================
+# AUTOUSE FIXTURES (applied to all tests)
+# ============================================================================
+
+@pytest.fixture(autouse=True)
+def mock_huggingface_token(monkeypatch):
+    """Auto-mock HuggingFace token for tests that need it, if not already set.
+    
+    This allows tests to run with either:
+    - Real token from .env file (if present)
+    - Mock token for tests that don't call the real API
+    
+    Priority: .env token > environment token > mock token
+    """
+    from dotenv import load_dotenv
+    from pathlib import Path
+    
+    # First, try loading from .env
+    env_path = Path(__file__).parent.parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+    
+    # Check if token is already set
+    if not os.getenv("HUGGINGFACEHUB_API_TOKEN"):
+        # No token set, use mock for testing
+        monkeypatch.setenv("HUGGINGFACEHUB_API_TOKEN", "test_token_mock_12345")
 
 
 # ============================================================================
