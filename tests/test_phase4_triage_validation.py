@@ -287,7 +287,7 @@ diff --git a/file2.py b/file2.py
             # All verdicts should have category
             for verdict in verdicts:
                 assert verdict.category, "Verdict should have category"
-                assert verdict.verdict_verdict is not None, "Verdict should have verdict_verdict"
+                assert verdict.judge.verdict is not None, "Verdict should have judge verdict"
     
     def test_verdicts_correctly_ordered_by_severity(self):
         """Test that verdicts are ordered from most to least severe."""
@@ -348,9 +348,10 @@ diff --git a/handlers.py b/handlers.py
         
         report = run_full_pipeline(raw_diff=diff)
         
-        # Should have findings
+        # Should have findings in the report
         assert report, "Should produce a report"
-        assert "findings" in report or "issues" in report.lower(), "Report should mention findings"
+        assert report.total_findings > 0, "Report should have findings"
+        assert len(report.verdicts) > 0, "Report should have verdicts"
     
     def test_single_critical_in_chunk1_verdict(self):
         """Test that single CRITICAL in chunk becomes verdict."""

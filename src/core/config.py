@@ -32,6 +32,7 @@ class Config:
         self._load()
         self._validate()
         self._apply_env_overrides()
+        self._validate()  # Re-validate to catch invalid env var overrides
     
     def _load(self) -> None:
         """Load YAML config file."""
@@ -47,7 +48,13 @@ class Config:
             raise ConfigError(f"Invalid YAML in {self.config_path}: {e}")
     
     def _validate(self) -> None:
-        """Validate config parameters."""
+        """Validate config parameters (called before and after env var overrides).
+        
+        Checks:
+        - All required fields present
+        - Token limits <= 32,768 (HF API hard limit)
+        - Safety margin >= 0.85 (security constraint)
+        """
         if 'models' not in self.data:
             raise ConfigError("Config missing 'models' section")
         

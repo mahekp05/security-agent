@@ -33,8 +33,8 @@ diff --git a/config/database.py b/config/database.py
         
         # Verify chunking occurred
         chunker = create_chunker()
-        from src.agents.diff_parser import parse_diff_to_hunks
-        parsed_hunks = parse_diff_to_hunks(diff)
+        from src.agents.diff_parser import parse_git_diff
+        parsed_hunks = parse_git_diff(diff)
         
         assert chunker.should_chunk(parsed_hunks) or len(parsed_hunks) > 1, \
             "Large diff should trigger chunking or have multiple hunks"

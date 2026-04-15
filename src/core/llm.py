@@ -35,7 +35,7 @@ def get_llm(
         temperature: Override temperature (uses config if None)
     
     Returns:
-        ChatHuggingFace instance configured for agent
+        ChatHuggingFace instance with token limits from config
     
     Raises:
         ValueError: If HUGGINGFACEHUB_API_TOKEN not set
@@ -54,15 +54,22 @@ def get_llm(
             "Configure as environment variable or GitHub secret."
         )
     
-    # Use config for model name and temperature
-    model_name = config.get_model_name(agent_type)
+    # Get config for this agent type
+    model_cfg = config.get_model_config(agent_type)
+    model_name = model_cfg['model_name']
     if temperature is None:
-        temperature = config.get_temperature(agent_type)
+        temperature = model_cfg['temperature']
     
-    # Create HuggingFace endpoint
+    # Extract token limits from config
+    max_tokens = model_cfg.get('max_tokens', 26000)
+    output_reserve = model_cfg.get('output_reserve', 500)
+    max_new_tokens = max_tokens - output_reserve
+    
+    # Create HuggingFace endpoint with token limits enforced
     llm = HuggingFaceEndpoint(
         model=model_name,
         temperature=temperature,
+        max_new_tokens=max_new_tokens,  # Limit output tokens from config
     )
     
     return ChatHuggingFace(llm=llm)

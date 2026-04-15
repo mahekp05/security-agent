@@ -79,9 +79,15 @@ def _analyze_diff(raw_diff: str) -> Tuple[List[DiffHunk], List[VulnerabilityFind
     """
     hunks = parse_git_diff(raw_diff)
     
-    # Determine if chunking is needed
-    chunker = create_chunker(max_tokens=24000, overlap_tokens=500)
-    should_chunk = chunker.should_chunk(hunks)
+    # Determine if chunking is needed (check config.enabled first)
+    config = get_config()
+    chunking_cfg = config.get_chunking_config()
+    chunking_enabled = chunking_cfg.get('enabled', True)
+    max_chunk_tokens = chunking_cfg.get('max_chunk_tokens', 24000)
+    overlap_tokens = chunking_cfg.get('overlap_tokens', 500)
+    
+    chunker = create_chunker(max_tokens=max_chunk_tokens, overlap_tokens=overlap_tokens)
+    should_chunk = chunking_enabled and chunker.should_chunk(hunks)
     
     if should_chunk:
         try:
@@ -170,21 +176,31 @@ def _analyze_diff(raw_diff: str) -> Tuple[List[DiffHunk], List[VulnerabilityFind
             if not all_relevant_hunks:
                 all_relevant_hunks = hunks
             
-            # Create final CategoryTriageVerdict
-            # Use worst verdict from aggregation
-            worst_judge_verdict = chunk_verdicts_by_category[category][0]
-            for v in chunk_verdicts_by_category[category]:
-                if aggregator.VERDICT_RANK.get(v.verdict, 0) > aggregator.VERDICT_RANK.get(worst_judge_verdict.verdict, 0):
-                    worst_judge_verdict = v
+            # Create final CategoryTriageVerdict using aggregated verdict
+            judge_verdict = JudgeVerdict(
+                category=category,
+                verdict=aggregated.final_verdict,
+                confidence_score=aggregated.confidence,
+                reasoning=aggregated.reasoning,
+                chunk_id=None  # PR-level, not chunk-specific
+            )
             
             verdicts.append(
                 CategoryTriageVerdict(
                     category=category,
                     findings=category_findings,
                     diff_hunks=all_relevant_hunks,
-                    prosecutor=ProsecutorVerdict(category=category, confidence_score=worst_judge_verdict.confidence_score, reasoning="(aggregated from chunks)"),
-                    defender=DefenderVerdict(confidence_score=worst_judge_verdict.confidence_score, reasoning="(aggregated from chunks)", agrees_with_prosecutor=True),
-                    judge=worst_judge_verdict,
+                    prosecutor=ProsecutorVerdict(
+                        category=category,
+                        confidence_score=aggregated.confidence,
+                        reasoning=aggregated.reasoning
+                    ),
+                    defender=DefenderVerdict(
+                        confidence_score=aggregated.confidence,
+                        reasoning=aggregated.reasoning,
+                        agrees_with_prosecutor=True
+                    ),
+                    judge=judge_verdict,
                 )
             )
 
