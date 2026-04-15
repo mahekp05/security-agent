@@ -14,6 +14,7 @@ class VulnerabilityFinding(BaseModel):
     description: str
     affected_code: str
     confidence: str = Field(description="High, Medium, or Low")
+    chunk_id: Optional[str] = Field(default=None, description="Chunk ID if analyzed from chunked diff (Phase 2)")
 
 class ProsecutorVerdict(BaseModel):
     """Prosecutor's argument that findings ARE real vulnerabilities"""
@@ -34,6 +35,8 @@ class JudgeVerdict(BaseModel):
     )
     reasoning: str = Field(description="150-400 words explaining risk assessment and actionable guidance")
     confidence_score: int = Field(ge=1, le=100, description="1-100: confidence in the final risk label")
+    chunk_id: Optional[str] = Field(default=None, description="Chunk ID if analyzed from chunked diff (Phase 2)")
+    verdict: Optional[str] = Field(default=None, description="Simplified verdict: CRITICAL, MEDIUM, LOW, FALSE_POSITIVE")
 
 class CategoryTriageVerdict(BaseModel):
     """Final verdict for all findings in one attack category"""
