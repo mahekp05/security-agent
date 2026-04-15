@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="0.853" timestamp="2026-04-11T23:20:28.437574-04:00" hostname="DESKTOP-BQ1JE3H"><testcase classname="tests.test_report_formatting" name="test_format_triage_section_includes_judge_fields" time="0.002" /></testsuite></testsuites>
