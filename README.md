@@ -48,4 +48,5 @@ Diff parser agent        ← strips noise, extracts security-relevant hunks
 - [ ] Adversarial triage loop
 - [ ] Severity scoring
 - [ ] Streamlit UI
+- [ ] Test PR Comment Bot integration
 - [ ] Evaluation framework
