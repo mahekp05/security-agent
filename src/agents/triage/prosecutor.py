@@ -7,8 +7,8 @@ Outputs confidence_score (1-100) on how sure the prosecutor is the vulnerability
 import json
 import re
 from typing import List
-from src.core.models import VulnerabilityFinding, DiffHunk, ProsecutorVerdict
-from src.core.llm import get_llm
+from core.models import VulnerabilityFinding, DiffHunk, ProsecutorVerdict
+from core.llm import get_llm
 
 
 class ProsecutorAgent:

@@ -1,6 +1,6 @@
 import re
 from typing import List
-from src.core.models import DiffHunk
+from core.models import DiffHunk
 
 def parse_git_diff(raw_diff: str) -> List[DiffHunk]:
     """

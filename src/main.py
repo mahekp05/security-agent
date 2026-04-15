@@ -12,15 +12,15 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, Iterable, List, Tuple
 
-from src.agents.diff_parser import parse_git_diff
-from src.agents.detectors.configuration_detector import detect_configuration
-from src.agents.detectors.errorHandling_detector import detect_error_handling
-from src.agents.detectors.injection_detector import detect_injection
-from src.agents.triage.defender import create_defender
-from src.agents.triage.judge import create_judge
-from src.agents.triage.prosecutor import create_prosecutor
-from src.core.models import CategoryTriageVerdict, DiffHunk, SecurityReport, VulnerabilityFinding
-from src.github.client import get_pr_diff, post_issue_comment
+from agents.diff_parser import parse_git_diff
+from agents.detectors.configuration_detector import detect_configuration
+from agents.detectors.errorHandling_detector import detect_error_handling
+from agents.detectors.injection_detector import detect_injection
+from agents.triage.defender import create_defender
+from agents.triage.judge import create_judge
+from agents.triage.prosecutor import create_prosecutor
+from core.models import CategoryTriageVerdict, DiffHunk, SecurityReport, VulnerabilityFinding
+from github.client import get_pr_diff, post_issue_comment
 
 
 def _normalize_diff_text(text: str) -> str:
