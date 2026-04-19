@@ -23,6 +23,7 @@ from src.agents.triage.defender import create_defender
 from src.agents.triage.judge import create_judge
 from src.agents.triage.prosecutor import create_prosecutor
 from src.agents.triage.aggregator import create_aggregator
+from src.core.config import get_config
 from src.core.models import CategoryTriageVerdict, DiffHunk, SecurityReport, VulnerabilityFinding, ProsecutorVerdict, DefenderVerdict
 from src.github.client import get_pr_diff, post_issue_comment
 
