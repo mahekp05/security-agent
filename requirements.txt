@@ -1,1 +1,14 @@
-pytest
+# Runtime dependencies
+requests>=2.31
+python-dotenv>=1.0
+pydantic>=2.0
+langchain-core>=0.2
+langchain-huggingface>=0.1
+huggingface_hub>=0.20
+
+# Configuration and tokenization
+pyyaml>=6.0
+tiktoken>=0.5
+
+# Development and testing
+pytest>=7.0

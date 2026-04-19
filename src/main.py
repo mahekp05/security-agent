@@ -3,6 +3,8 @@
 This module is the backend entrypoint responsible for retrieving and processing PR diffs.
 In GitHub PR mode it fetches the actual PR diff via the GitHub API, parses it, runs
 detectors and triage agents, then posts a Markdown report as an issue comment.
+
+Phase 2: Supports chunking of large diffs with per-chunk analysis.
 """
 
 import argparse
@@ -13,13 +15,15 @@ from datetime import datetime, timezone
 from typing import Dict, Iterable, List, Tuple
 
 from src.agents.diff_parser import parse_git_diff
+from src.agents.chunker import create_chunker, Chunk
 from src.agents.detectors.configuration_detector import detect_configuration
 from src.agents.detectors.errorHandling_detector import detect_error_handling
 from src.agents.detectors.injection_detector import detect_injection
 from src.agents.triage.defender import create_defender
 from src.agents.triage.judge import create_judge
 from src.agents.triage.prosecutor import create_prosecutor
-from src.core.models import CategoryTriageVerdict, DiffHunk, SecurityReport, VulnerabilityFinding
+from src.agents.triage.aggregator import create_aggregator
+from src.core.models import CategoryTriageVerdict, DiffHunk, SecurityReport, VulnerabilityFinding, ProsecutorVerdict, DefenderVerdict
 from src.github.client import get_pr_diff, post_issue_comment
 
 
@@ -62,51 +66,143 @@ def _select_relevant_hunks(hunks: List[DiffHunk], findings: List[VulnerabilityFi
 
 
 def _analyze_diff(raw_diff: str) -> Tuple[List[DiffHunk], List[VulnerabilityFinding], List[CategoryTriageVerdict]]:
-    """Parse diff, run detectors, then run triage per category.
+    """Parse diff, run detectors (with optional chunking), then run triage per category.
+    
+    Phase 2: Implements intelligent chunking for large diffs:
+    - If diff > 24k tokens: split by file boundaries
+    - Analyze each chunk independently (detectors, triage)
+    - Tag findings with chunk IDs for traceability
+    - Aggregate verdicts: worst verdict wins
 
     Returns:
         (hunks, findings, verdicts)
     """
     hunks = parse_git_diff(raw_diff)
-
+    
+    # Determine if chunking is needed (check config.enabled first)
+    config = get_config()
+    chunking_cfg = config.get_chunking_config()
+    chunking_enabled = chunking_cfg.get('enabled', True)
+    max_chunk_tokens = chunking_cfg.get('max_chunk_tokens', 24000)
+    overlap_tokens = chunking_cfg.get('overlap_tokens', 500)
+    
+    chunker = create_chunker(max_tokens=max_chunk_tokens, overlap_tokens=overlap_tokens)
+    should_chunk = chunking_enabled and chunker.should_chunk(hunks)
+    
+    if should_chunk:
+        try:
+            chunks = chunker.chunk_diff(hunks)
+            print(f"Chunking enabled: {len(chunks)} chunks (total {len(hunks)} hunks)")
+        except ValueError as e:
+            print(f"Chunking failed: {e}. Falling back to non-chunked analysis.")
+            chunks = [Chunk(id="chunk_1", hunks=hunks, token_count=0)]
+    else:
+        # No chunking needed
+        chunks = [Chunk(id="chunk_1", hunks=hunks, token_count=0)]
+    
+    # Run detectors on each chunk
     findings: List[VulnerabilityFinding] = []
-    findings.extend(detect_injection(hunks))
-    findings.extend(detect_configuration(hunks))
-    findings.extend(detect_error_handling(hunks))
+    for chunk in chunks:
+        print(f"Agent: Analyzing chunk {chunk.id}...")
+        
+        chunk_findings = []
+        chunk_findings.extend(detect_injection(chunk.hunks))
+        chunk_findings.extend(detect_configuration(chunk.hunks))
+        chunk_findings.extend(detect_error_handling(chunk.hunks))
+        
+        # Tag findings with chunk ID
+        for finding in chunk_findings:
+            finding.chunk_id = chunk.id
+        
+        findings.extend(chunk_findings)
 
+    # Group findings by category
     findings_by_category: Dict[str, List[VulnerabilityFinding]] = defaultdict(list)
     for finding in findings:
         findings_by_category[finding.category].append(finding)
 
+    # Run triage per category
     prosecutor = create_prosecutor()
     defender = create_defender()
     judge = create_judge()
+    aggregator = create_aggregator()
 
     verdicts: List[CategoryTriageVerdict] = []
+    
     for category in sorted(findings_by_category.keys()):
         category_findings = findings_by_category[category]
         if not category_findings:
             continue
 
-        relevant_hunks = _select_relevant_hunks(hunks, category_findings)
-        if not relevant_hunks:
-            # Fallback: do not fail triage if detector output doesn't exactly match diff lines.
-            relevant_hunks = hunks
+        # Group findings by chunk
+        chunk_verdicts_by_category: Dict[str, List] = defaultdict(list)
+        
+        for chunk in chunks:
+            chunk_findings = [f for f in category_findings if f.chunk_id == chunk.id]
+            if not chunk_findings:
+                continue
+            
+            relevant_hunks = _select_relevant_hunks(chunk.hunks, chunk_findings)
+            if not relevant_hunks:
+                relevant_hunks = chunk.hunks
 
-        prosecutor_verdict = prosecutor.prosecute(category, category_findings, relevant_hunks)
-        defender_verdict = defender.defend(category, category_findings, relevant_hunks, prosecutor_verdict)
-        judge_verdict = judge.judge(category, category_findings, relevant_hunks, prosecutor_verdict, defender_verdict)
+            prosecutor_verdict = prosecutor.prosecute(category, chunk_findings, relevant_hunks)
+            defender_verdict = defender.defend(category, chunk_findings, relevant_hunks, prosecutor_verdict)
+            judge_verdict = judge.judge(category, chunk_findings, relevant_hunks, prosecutor_verdict, defender_verdict)
+            
+            # Tag verdict with chunk ID and simplified verdict for aggregation
+            judge_verdict.chunk_id = chunk.id
+            
+            # Map risk_label to simplified verdict for aggregation
+            risk_to_verdict = {
+                "critical_risk": "CRITICAL",
+                "medium_risk": "MEDIUM",
+                "low_risk": "LOW",
+                "false_positive": "FALSE_POSITIVE"
+            }
+            judge_verdict.verdict = risk_to_verdict.get(judge_verdict.risk_label, "LOW")
+            
+            chunk_verdicts_by_category[category].append(judge_verdict)
 
-        verdicts.append(
-            CategoryTriageVerdict(
-                category=category,
-                findings=category_findings,
-                diff_hunks=relevant_hunks,
-                prosecutor=prosecutor_verdict,
-                defender=defender_verdict,
-                judge=judge_verdict,
+        # Aggregate verdicts for this category across all chunks
+        if chunk_verdicts_by_category[category]:
+            aggregated = aggregator.aggregate_category_verdicts(
+                category,
+                chunk_verdicts_by_category[category]
             )
-        )
+            
+            # Select all relevant hunks for the final verdict
+            all_relevant_hunks = _select_relevant_hunks(hunks, category_findings)
+            if not all_relevant_hunks:
+                all_relevant_hunks = hunks
+            
+            # Create final CategoryTriageVerdict using aggregated verdict
+            judge_verdict = JudgeVerdict(
+                category=category,
+                verdict=aggregated.final_verdict,
+                confidence_score=aggregated.confidence,
+                reasoning=aggregated.reasoning,
+                chunk_id=None  # PR-level, not chunk-specific
+            )
+            
+            verdicts.append(
+                CategoryTriageVerdict(
+                    category=category,
+                    findings=category_findings,
+                    diff_hunks=all_relevant_hunks,
+                    prosecutor=ProsecutorVerdict(
+                        category=category,
+                        confidence_score=aggregated.confidence,
+                        reasoning=aggregated.reasoning
+                    ),
+                    defender=DefenderVerdict(
+                        confidence_score=aggregated.confidence,
+                        reasoning=aggregated.reasoning,
+                        agrees_with_prosecutor=True
+                    ),
+                    judge=judge_verdict,
+                )
+            )
 
     risk_order = {"critical_risk": 4, "medium_risk": 3, "low_risk": 2, "false_positive": 1}
     verdicts.sort(key=lambda v: risk_order.get(v.risk_label, 0), reverse=True)
