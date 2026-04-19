@@ -177,11 +177,20 @@ def _analyze_diff(raw_diff: str) -> Tuple[List[DiffHunk], List[VulnerabilityFind
             if not all_relevant_hunks:
                 all_relevant_hunks = hunks
             
+            # Convert aggregated verdict back to risk_label format
+            verdict_to_risk = {
+                "CRITICAL": "critical_risk",
+                "MEDIUM": "medium_risk",
+                "LOW": "low_risk",
+                "FALSE_POSITIVE": "false_positive"
+            }
+            final_risk_label = verdict_to_risk.get(aggregated.final_verdict, "low_risk")
+            
             # Create final CategoryTriageVerdict using aggregated verdict
             judge_verdict = JudgeVerdict(
-                category=category,
+                risk_label=final_risk_label,
                 verdict=aggregated.final_verdict,
-                confidence_score=aggregated.confidence,
+                confidence_score=int(round(aggregated.confidence)),
                 reasoning=aggregated.reasoning,
                 chunk_id=None  # PR-level, not chunk-specific
             )
@@ -193,11 +202,11 @@ def _analyze_diff(raw_diff: str) -> Tuple[List[DiffHunk], List[VulnerabilityFind
                     diff_hunks=all_relevant_hunks,
                     prosecutor=ProsecutorVerdict(
                         category=category,
-                        confidence_score=aggregated.confidence,
+                        confidence_score=int(round(aggregated.confidence)),
                         reasoning=aggregated.reasoning
                     ),
                     defender=DefenderVerdict(
-                        confidence_score=aggregated.confidence,
+                        confidence_score=int(round(aggregated.confidence)),
                         reasoning=aggregated.reasoning,
                         agrees_with_prosecutor=True
                     ),

@@ -319,7 +319,6 @@ Respond with ONLY the JSON object, no additional text."""
             reasoning += f"\n\n[Extended reasoning: current response ({word_count} words), need 200-300 words]"
         
         return JudgeVerdict(
-            category=category,
             risk_label=risk_label,
             confidence_score=confidence_score,
             reasoning=reasoning
