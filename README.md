@@ -16,6 +16,104 @@ Covers 3 OWASP Top 10:2025 categories:
 
 ---
 
+
+#### Setup (3 Steps)
+
+**Step 1: Download GitHub Actions Files**
+
+Download from the `security-agent` repository:
+1. **The entire `.github/` folder** (contains workflow files)
+2. **`requirements-actions.txt`** file
+
+Add to the **root** of your repository:
+```
+your-repo/
+├── .github/
+│   └── workflows/
+│       ├── security-scan.yml
+│       └── ...
+├── requirements-actions.txt
+└── ...
+```
+
+**Step 2: Set Up GitHub Actions Secret (HuggingFace API Token)**
+
+This is **required** for the security agent to run.
+
+1. Go to https://huggingface.co/settings/tokens
+2. Click "Create new token"
+3. Name it: `security-agent-token`
+4. Select: Inference permisions
+    - Make calls to Inference Providers
+    - Make calls to Inference Endpoints 
+5. Copy the token (starts with `hf_`)
+
+Then in your GitHub repository:
+1. Go to **Settings** (top menu)
+2. Left sidebar → **Secrets and variables** → **Actions**
+3. Click **New repository secret**
+4. Fill in:
+   - **Name**: `HUGGINGFACEHUB_API_TOKEN` (must be exactly this)
+   - **Secret**: Paste your HuggingFace token
+5. Click **Add secret**
+
+**Step 3: Commit and Push**
+
+Add files to your repository :
+- Go to your repo → Code tab
+- Create a new folder `.github/workflows/`
+- Upload the workflow files from security-agent
+- Upload `requirements-actions.txt` to root
+- Commit with message "Add security agent GitHub Actions"
+
+---
+
+#### How It Works (Detailed Breakdown)
+
+**Trigger:** Every time someone creates a Pull Request
+
+1. **GitHub Actions Detects PR** → Workflow starts automatically
+2. **Code Checkout** → Action downloads your code + PR changes
+3. **Install Dependencies** → Sets up Python, installs from requirements-actions.txt
+4. **Authenticate with HuggingFace** → Uses HUGGINGFACEHUB_API_TOKEN secret
+5. **Run Security Agent** → Analyzes ONLY changed code:
+   - Prosecutor: "This IS a real risk" (gives confidence score)
+   - Defender: "Is it really?" (challenges the finding)
+   - Judge: "Here's my verdict" (final risk level)
+6. **Post Comment on PR** → GitHub posts findings as PR comment
+7. **Optional - Block Merge if Critical** → Merge blocked until CRITICAL vulnerabilities fixed
+
+If fails:
+1. Go to **Actions** section under new code repository
+2. Create custom actions workflow
+3. Copy and paste the file security-review.yml into actions
+4. Ensure requirements-actions.txt exist within repository
+
+#### Example: What Developers See
+
+PR comment posted automatically:
+
+```
+ Security Analysis Report
+
+FILE: src/api/users.js
+[CRITICAL] SQL Injection (A05) - Lines 42-45
+  Issue: User input directly in SQL query without parameterization
+  Recommendation: Use prepared statements or parameterized queries
+  Confidence: 92%
+
+FILE: config.js
+[MEDIUM] Exposed API Key (A02) - Line 8
+  Issue: API key hardcoded in source code
+  Recommendation: Move to .env file or GitHub Secrets
+  Confidence: 78%
+
+Summary: 2 findings (1 CRITICAL, 1 MEDIUM, 0 LOW)
+
+```
+
+---
+
 ## How it works
 
 ```
@@ -51,6 +149,7 @@ Large PRs (>10K tokens) exceed the HuggingFace API token limit (32,768 tokens pe
 - **Aggregation**: Worst-verdict-wins across chunks (CRITICAL > MEDIUM > LOW > FALSE_POSITIVE)
 
 ### Per-Request Token Budget (Phase 1)
+Note: models configured to run on free token limit to ensure token limits not hit midway and cause failure
 Configuration-driven via `config/model_config.yaml` + environment variable overrides:
 
 ```yaml
@@ -133,94 +232,17 @@ aggregated = aggregator.aggregate_all_categories(verdicts_by_category)
 
 ### Backward Compatibility
 
-- ✅ Small diffs (<10K tokens) use single chunk (`chunk_1`)
-- ✅ `chunk_id` field is optional on findings (pre-Phase 2 code still works)
-- ✅ No changes to detector/prosecutor/defender/judge prompts
-- ✅ No output format changes
+-  Small diffs (<10K tokens) use single chunk (`chunk_1`)
+- `chunk_id` field is optional on findings (pre-Phase 2 code still works)
+- No changes to detector/prosecutor/defender/judge prompts
+- No output format changes
 
 ---
-
-## Setup
-
-### Configuration
-
-1. **Create `.env` file**:
-```bash
-HUGGINGFACEHUB_API_TOKEN=hf_xxxxx
-```
-
-2. **Optional: Override token limits**:
-```bash
-export SECURITY_AGENT_DETECTOR_TOKENS=23000
-export SECURITY_AGENT_PROSECUTOR_TOKENS=18000
-export SECURITY_AGENT_JUDGE_TOKENS=25000
-export SECURITY_AGENT_CHUNKING_ENABLED=true
-```
-
-3. **Install dependencies**:
-```bash
-pip install -r requirements.txt
-```
-
-### Testing
-
-**Phase 1-4 Tests** (Configuration, Chunking, Detection, Triage):
-```bash
-pytest tests/test_config.py tests/test_chunking.py tests/test_phase3_per_chunk_detection.py tests/test_phase4_triage_validation.py -v
-```
-
-**Phase 5 Tests** (Integration & error handling):
-```bash
-pytest tests/test_phase5_integration.py -v
-```
-
-**Full test suite**:
-```bash
-pytest tests/ -v
-```
-
----
-
-## Status
-
-### ✅ Completed (Phases 1-5)
-
-- [x] **Phase 1**: Configuration system (YAML + env overrides)
-  - 23/23 unit tests pass
-  - Singleton pattern with validation
-  - Per-agent model/token config
-
-- [x] **Phase 2**: Semantic chunking & token management
-  - 21/21 unit tests pass
-  - TokenEstimator, SemanticChunker, VerdictAggregator
-  - 500-token overlap for context preservation
-  - Worst-verdict-wins aggregation
-
-- [x] **Phase 3**: Per-chunk detection validation
-  - 9/11 tests pass* (*2 blocked by HF API credits)
-  - Chunking loop integrated in _analyze_diff()
-  - All 3 detectors run per chunk
-  - Findings tagged with chunk_id
-
-- [x] **Phase 4**: Per-chunk triage aggregation
-  - 20/20 unit tests pass
-  - Verdict aggregation across chunks
-  - Multi-category aggregation (A05, A02, A10)
-  - Severity filtering (CRITICAL/MEDIUM reported)
-
-- [x] **Phase 5**: Full integration & error handling
-  - 5+ integration tests pass
-  - Large diff handling (40K+ tokens)
-  - Error handling (empty diff, malformed, Unicode)
-  - Chunking corner cases
-
-- [x] Diff parser agent
-- [x] Detection agents (A05, A02, A10)
-- [x] Adversarial triage loop (prosecutor/defender/judge)
-- [x] Severity scoring with chunking support
 
 ### ⏳ Future Work
 - [ ] Streamlit UI with chunk visualization
-- [ ] GitHub Actions integration
 - [ ] Evaluation framework & metrics
 - [ ] Support for additional OWASP categories
+
+---
+
