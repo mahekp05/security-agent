@@ -1,3 +1,4 @@
+# Written with help of GitHub Copilot
 from src.core.llm import get_llm
 from src.core.models import DiffHunk, VulnerabilityFinding
 from langchain_core.prompts import PromptTemplate

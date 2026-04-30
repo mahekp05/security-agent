@@ -1,3 +1,4 @@
+# Written with help of GitHub Copilot
 """Security agent runner.
 
 This module is the backend entrypoint responsible for retrieving and processing PR diffs.

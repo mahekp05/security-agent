@@ -1,3 +1,4 @@
+# Written with help of GitHub Copilot
 """Verdict aggregation for multi-chunk analysis.
 
 Combines per-chunk verdicts using worst-verdict-wins logic:

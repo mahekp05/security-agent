@@ -1,3 +1,4 @@
+# Written with help of GitHub Copilot
 """
 Prosecutor Agent - Red Team Perspective
 Argues that findings ARE real, exploitable vulnerabilities.

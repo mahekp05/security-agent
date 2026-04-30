@@ -1,3 +1,4 @@
+# Written with help of GitHub Copilot
 """Configuration management for security-agent.
 
 Loads YAML config, validates parameters, merges environment variable overrides.

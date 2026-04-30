@@ -1,3 +1,4 @@
+# Written with help of GitHub Copilot
 """
 Judge Agent - Neutral Risk Assessment
 Synthesizes Prosecutor and Defender arguments into practical risk decisions.

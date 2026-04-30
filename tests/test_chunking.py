@@ -1,4 +1,6 @@
-"""Tests for chunking and token management (Phase 2).
+# Written with help of GitHub Copilot
+"""
+Tests for chunking and token management (Phase 2).
 
 Tests semantic chunking by file boundaries, token counting accuracy,
 chunk aggregation, and end-to-end chunking with detectors.

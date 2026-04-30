@@ -1,3 +1,4 @@
+# Written with help of GitHub Copilot
 """Semantic chunking for large diffs with token management.
 
 Splits hunks by file boundaries, maintains context overlap, and tracks token counts.

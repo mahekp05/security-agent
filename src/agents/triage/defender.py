@@ -1,3 +1,4 @@
+# Written with help of GitHub Copilot
 """
 Defender Agent - Devil's Advocate Perspective
 Counters Prosecutor's argument and explains why findings may be false positives.
