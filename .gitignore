@@ -38,6 +38,13 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+CHUNKING.md
+DESIGN_GITHUB_PR_COMMENT_BOT.md
+IMPLEMENTATION_GUIDE.md
+TEST_RESULTS_SUMMARY.md
+token_usage_plan.md
+tests/TEST_GUIDE.md
+tests/TEST_STATUS.md
 
 # Testing
 .pytest_cache/
