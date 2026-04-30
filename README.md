@@ -246,3 +246,7 @@ aggregated = aggregator.aggregate_all_categories(verdicts_by_category)
 
 ---
 
+##### Code Contributions:
+- Mahek Patel: Diff parsing, chunking logic, Detector implementation, testing, GitHub Actions integration, documentation
+- Stuti Goyal: Detector implementation, prosecutor/defender/judge logic, verdict aggregation, documentation, testing
+- Github Co-pilot: Assisted with code generation, refactoring, and documentation formatting
